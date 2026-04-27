@@ -1,176 +1,69 @@
 import { useState, useEffect } from 'react'
 import ErpLayout from '../components/ErpLayout'
-import { fetchHeatmap, simulateBunk } from '../services/api'
-import { CalendarDays, Sliders, AlertTriangle, Download } from 'lucide-react'
-import AttendanceTrend from '../components/AttendanceTrend'
+import { Info, Download, Printer } from 'lucide-react'
 
 export default function AttendancePage() {
-  const [heatmap, setHeatmap] = useState([])
-  const [streak, setStreak] = useState(0)
-  const [selectedDay, setSelectedDay] = useState(null)
-  
-  const [simSlider, setSimSlider] = useState(0)
-  const [simResult, setSimResult] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchHeatmap(new Date().getFullYear(), new Date().getMonth() + 1).then(res => {
-      setHeatmap(res?.calendar || [])
-      setStreak(res?.current_streak || 0)
-      setLoading(false)
-    }).catch(() => {
-      setHeatmap([])
-      setLoading(false)
-    })
-    
-    // Initial sim
-    handleSimulate(0)
-  }, [])
-
-  function handleSimulate(runs) {
-    setSimSlider(runs)
-    simulateBunk(runs).then(res => setSimResult(res)).catch(() => null)
-  }
-
-  if (loading) return (
-    <div className="page-loader"><div className="loader-card"><h2>Studvisor</h2><p>Loading Attendance Matrix...</p></div></div>
-  )
-
-  const parseDate = (dstr) => parseInt(dstr.split('-')[2], 10)
-
-  // Generate blank cells to offset start of month
-  const firstDayStr = heatmap[0]?.date
-  let blanks = []
-  if (firstDayStr) {
-    const dDate = new Date(firstDayStr)
-    const dayOfWeek = dDate.getDay() // 0 = Sunday, 1 = Monday
-    const offset = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Convert to Mon=0
-    blanks = Array(offset).fill(null)
-  }
+  const [data, setData] = useState([
+    { sl: 1, name: "CA-V2 Vocation Course II : Electronic Content Design ( 6BCA-ECD )", th: 18, ah: 9, dl: 6, ahdl: 15, ah_pct: "50.00 %", ahdl_pct: "83.33 %" },
+    { sl: 2, name: "Internship ( 6BCA-INT )", th: 10, ah: 6, dl: 2, ahdl: 8, ah_pct: "60.00 %", ahdl_pct: "80.00 %" },
+    { sl: 3, name: "Industrial Specialization ( 6BCA-IS )", th: 21, ah: 6, dl: 2, ahdl: 8, ah_pct: "28.57 %", ahdl_pct: "38.10 %" },
+    { sl: 4, name: "LIBRARY ( 6BCA-LIB )", th: 1, ah: 1, dl: 0, ahdl: 1, ah_pct: "100.00 %", ahdl_pct: "100.00 %" },
+    { sl: 5, name: "Mobile Application Development ( 6BCA-MAD )", th: 32, ah: 17, dl: 9, ahdl: 26, ah_pct: "53.13 %", ahdl_pct: "81.25 %" },
+    { sl: 6, name: "Mobile Application Development Lab ( 6BCA-MADLAB )", th: 27, ah: 16, dl: 6, ahdl: 22, ah_pct: "59.26 %", ahdl_pct: "81.48 %" },
+    { sl: 7, name: "Machine Learning ( 6BCA-ML )", th: 38, ah: 20, dl: 9, ahdl: 29, ah_pct: "52.63 %", ahdl_pct: "76.32 %" }
+  ])
 
   return (
-    <ErpLayout title="Attendance Engine" subtitle="Live tracking, heatmaps, and predictive bunk simulations">
-      
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', gap: '8px' }}>
-        <button 
-          onClick={() => window.open(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/reports/attendance-certificate`, '_blank')}
-          style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
-          <Download size={16} /> Attendance Certificate
-        </button>
+    <ErpLayout>
+      <div className="breadcrumb">ATTENDANCE</div>
+
+      <div style={{ background: '#f5f5f5', padding: '12px 16px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#555', marginBottom: '24px' }}>
+        <Info size={16} color="#333" />
+        <strong>Note:</strong> When the rule "Attendance count from date of admission" is enabled, data is shown from the date of admission.
       </div>
 
-      <div className="dashboard-grid attendance-summary-grid">
-         <div className="card info-card">
-          <div className="info-card-title">Current Streak</div>
-          <div className="info-card-value">{streak} <span style={{fontSize:'1rem'}}>Days</span></div>
-          <div className="info-card-subtitle" style={{ color: '#fb923c' }}>🔥 Keep it going!</div>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginBottom: '16px' }}>
+        <button className="filter-btn"><Download size={14}/> Export</button>
+        <button className="filter-btn"><Printer size={14}/> Print</button>
       </div>
 
-      {/* ── Attendance Trend Component ── */}
-      <div style={{ marginBottom: '24px' }}>
-        <AttendanceTrend />
-      </div>
-
-      <div className="dashboard-lower-grid" style={{ gridTemplateColumns: '1.2fr 0.8fr' }}>
-        
-        <div className="card">
-          <h3 className="section-title"><CalendarDays size={18} style={{ display:'inline', verticalAlign:'-3px', marginRight:'6px' }}/> Monthly Heatmap</h3>
-          <p className="erp-page-subtitle" style={{ marginBottom: '16px' }}>{new Date().toLocaleDateString('en-US', { month:'long', year:'numeric'})}</p>
-          
-          <div className="heatmap-grid">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-              <div key={d} className="heatmap-day-label">{d}</div>
+      <div className="linways-table-container">
+        <table className="linways-table">
+          <thead>
+            <tr className="linways-table-header-row">
+              <th colSpan="8">COURSE WISE REPORT</th>
+            </tr>
+            <tr className="linways-table-header-row" style={{ backgroundColor: '#fff', borderBottom: '1px solid #e0e0e0' }}>
+              <th colSpan="8" style={{ fontWeight: 400, textTransform: 'none' }}>Date range : 09-02-2026 to 11-07-2026</th>
+            </tr>
+            <tr>
+              <th>SL.NO.</th>
+              <th style={{ textAlign: 'left' }}>COURSE NAME</th>
+              <th>TH</th>
+              <th>AH</th>
+              <th>DL</th>
+              <th>AH + DL</th>
+              <th>AH%</th>
+              <th>AH+DL%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map(row => (
+              <tr key={row.sl}>
+                <td>{row.sl}</td>
+                <td style={{ textAlign: 'left', color: '#333' }}>{row.name}</td>
+                <td>{row.th}</td>
+                <td>{row.ah}</td>
+                <td>{row.dl}</td>
+                <td>{row.ahdl}</td>
+                <td>{row.ah_pct}</td>
+                <td>{row.ahdl_pct}</td>
+              </tr>
             ))}
-            
-            {blanks.map((_, i) => <div key={`b-${i}`} className="heatmap-cell empty"></div>)}
-            
-            {heatmap.map(day => {
-              let colorClass = 'heatmap-gray'
-              if (day.status === 'Present') colorClass = 'heatmap-green'
-              if (day.status === 'Partial') colorClass = 'heatmap-yellow'
-              if (day.status === 'Absent') colorClass = 'heatmap-red'
-              if (day.is_holiday) colorClass = 'heatmap-gray'
-
-              return (
-                <div 
-                  key={day.date} 
-                  className={`heatmap-cell ${colorClass} ${selectedDay?.date === day.date ? 'selected' : ''}`}
-                  onClick={() => setSelectedDay(day)}
-                  title={`${day.date}: ${day.status}`}
-                >
-                  <span className="heatmap-date">{parseDate(day.date)}</span>
-                </div>
-              )
-            })}
-          </div>
-          
-          <div className="heatmap-legend">
-            <div><span className="heatmap-dot heatmap-green"></span> Full Present</div>
-            <div><span className="heatmap-dot heatmap-yellow"></span> Partial</div>
-            <div><span className="heatmap-dot heatmap-red"></span> Absent</div>
-            <div><span className="heatmap-dot heatmap-gray"></span> Holiday/No Data</div>
-          </div>
-
-          {selectedDay && selectedDay.detail && selectedDay.detail.length > 0 && (
-            <div className="day-detail-popup">
-              <h4>Classes on {selectedDay.date}</h4>
-              <div className="day-detail-hours">
-                {selectedDay.detail.map((hr, idx) => (
-                  <div key={idx} className="day-hour-item">
-                    <span className="day-hour-num">H {hr.period}</span>
-                    <span>{hr.subject_code}</span>
-                    <span className={`day-hour-status ${hr.status}`}>{hr.status === 'P' ? 'Present' : hr.status === 'A' ? 'Absent' : 'Duty Leave'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="card">
-          <h3 className="section-title"><Sliders size={18} style={{ display:'inline', verticalAlign:'-3px', marginRight:'6px' }}/> Predictive Bunk Simulator</h3>
-          <p className="erp-page-subtitle">Simulate the impact of missing upcoming days entirely.</p>
-          
-          <div className="sim-controls">
-            <label className="sim-label">
-              Days to miss: {simSlider}
-              <input 
-                type="range" className="sim-slider" 
-                min="0" max="10" 
-                value={simSlider} 
-                onChange={e => handleSimulate(parseInt(e.target.value))} 
-              />
-            </label>
-          </div>
-
-          {simResult && (
-            <>
-              <div className="sim-current">
-                Overall projection: <strong style={{ color: simResult.projected_overall >= 75 ? '#6ee7b7' : '#fca5a5' }}>
-                  {simResult.projected_overall}%
-                </strong>
-                {simResult.projected_overall < 75 && <AlertTriangle size={16} color="#fca5a5" />}
-              </div>
-              
-              <div className="sim-projections">
-                {simResult.projected_subjects.map(sub => (
-                  <div key={sub.subject} className={`sim-proj-item severity-${sub.severity}`}>
-                    <div style={{ width: '80px', fontWeight: 600 }}>{sub.subject}</div>
-                    <div className="sim-proj-bar-track">
-                      <div className="sim-proj-bar-fill" style={{ width: `${sub.projected}%`, background: sub.severity === 'safe' ? 'var(--success)' : sub.severity === 'caution' ? 'var(--warning)' : sub.severity === 'danger' ? 'var(--orange)' : 'var(--danger)' }}></div>
-                    </div>
-                    <div style={{ minWidth: '40px', textAlign: 'right', fontWeight: 700 }}>{sub.projected}%</div>
-                    {sub.severity === 'critical' && <div className="sim-warn critical">Danger Zone</div>}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
+          </tbody>
+        </table>
       </div>
+
     </ErpLayout>
   )
 }
-

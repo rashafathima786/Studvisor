@@ -1,26 +1,24 @@
-import { useNavigate } from 'react-router-dom'
-import Header from './Header'
 import Sidebar from './Sidebar'
-import ToastContainer from './Toast'
-import useAuthStore from '../stores/authStore'
+import Header from './Header'
 
 export default function ErpLayout({ title, subtitle, children }) {
-  const navigate = useNavigate()
-  const logout = useAuthStore((s) => s.logout)
-
-  function handleLogout() {
-    logout()
-    navigate('/login')
-  }
-
   return (
     <div className="dashboard-layout">
-      <Sidebar onLogout={handleLogout} />
+      <Sidebar />
       <main className="dashboard-main">
-        <Header title={title} subtitle={subtitle} />
-        {children}
+        <Header />
+        <div className="content-area">
+          {title && <div className="breadcrumb" style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>{title}</span>
+            {subtitle && <span style={{ color: '#888', fontWeight: 'normal', textTransform: 'none' }}>{subtitle}</span>}
+          </div>}
+          {children}
+        </div>
+        <footer className="Studvisor-footer">
+          <div>Powered by Linways Technologies Pvt.Ltd.</div>
+          <div>Linways AMS ULTIMATE v4.4.1.7</div>
+        </footer>
       </main>
-      <ToastContainer />
     </div>
   )
 }

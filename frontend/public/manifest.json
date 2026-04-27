@@ -1,6 +1,6 @@
 {
-  "name": "Studvisor",
-  "short_name": "Studvisor",
+  "name": "Nexus ERP",
+  "short_name": "Nexus",
   "description": "Unified Campus Intelligence Platform",
   "start_url": "/",
   "display": "standalone",
@@ -19,4 +19,3 @@
     }
   ]
 }
-

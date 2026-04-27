@@ -1,52 +1,43 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import ErpLayout from '../components/ErpLayout'
-import { fetchAnonPosts, createAnonPost, reactToPost } from '../services/api'
-import { Send, Search, MoreVertical, ThumbsUp, Heart, Smile, AlertTriangle, Shield } from 'lucide-react'
+import { fetchAnonPosts, createAnonPost, reactToPost, fetchMeritStatus } from '../services/api'
+import { 
+  MessageSquare, Flame, Clock, Hash, AlertTriangle, 
+  ThumbsUp, Heart, Smile, Frown, Shield
+} from 'lucide-react'
 
 export default function AnonChatPage() {
   const [posts, setPosts] = useState([])
-  const [category, setCategory] = useState("General")
-  const [newContent, setNewContent] = useState('')
+  const [merit, setMerit] = useState(null)
   const [loading, setLoading] = useState(true)
-  const messagesEndRef = useRef(null)
+  const [category, setCategory] = useState("All")
+  const [sortBy, setSortBy] = useState("recent")
+  const [showModal, setShowModal] = useState(false)
+  const [newContent, setNewContent] = useState('')
+  const [newCategory, setNewCategory] = useState('General')
 
-  const channels = [
-    { id: "General", name: "Campus General", desc: "Open discussions", icon: "🏫" },
-    { id: "Confessions", name: "Confessions", desc: "Anonymous secrets", icon: "🤫" },
-    { id: "Questions", name: "Academic Q&A", desc: "Help with studies", icon: "📚" },
-    { id: "Clubs", name: "Club Activities", desc: "Events & updates", icon: "🎭" },
-    { id: "Funny", name: "Memes & Jokes", desc: "Campus humor", icon: "😂" }
-  ]
-
-  const emojis = { 
-    "thumbs_up": <ThumbsUp size={12} />, 
-    "heart": <Heart size={12} />, 
-    "laugh": <Smile size={12} /> 
-  }
+  const categories = ["All", "General", "Confessions", "Questions", "Clubs", "Funny", "Vent"]
 
   function loadWall() {
-    fetchAnonPosts(category, "recent").then(res => {
-      // Reverse so newest is at the bottom like WhatsApp
-      setPosts((res?.posts || []).reverse())
+    Promise.all([
+      fetchAnonPosts(category === "All" ? null : category, sortBy).catch(() => null),
+      fetchMeritStatus().catch(() => null)
+    ]).then(([pRes, mRes]) => {
+      setPosts(pRes?.posts || [])
+      setMerit(mRes || null)
       setLoading(false)
-    }).catch(() => setLoading(false))
+    })
   }
 
   useEffect(() => {
-    setLoading(true)
     loadWall()
-  }, [category])
+  }, [category, sortBy])
 
-  useEffect(() => {
-    // Scroll to bottom when posts change
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [posts])
-
-  async function handleSend(e) {
-    e.preventDefault()
+  async function handlePost() {
     if (!newContent.trim()) return
     try {
-      await createAnonPost({ content: newContent, category })
+      await createAnonPost({ content: newContent, category: newCategory })
+      setShowModal(false)
       setNewContent('')
       loadWall()
     } catch (err) {
@@ -59,127 +50,136 @@ export default function AnonChatPage() {
       await reactToPost(postId, reactionType)
       loadWall()
     } catch (err) {
-      console.error(err)
+      alert(err.response?.data?.detail || "Failed to react")
     }
   }
 
-  const activeChannel = channels.find(c => c.id === category) || channels[0]
+  if (loading) return (
+    <div className="page-loader">
+       <div className="loader-card"><h2>Campus Wall</h2><p>Syncing anonymous feed...</p></div>
+    </div>
+  )
+
+  const emojis = { "thumbs_up": <ThumbsUp size={14} />, "heart": <Heart size={14} />, "laugh": <Smile size={14} />, "shock": <AlertTriangle size={14} />, "flag": <Frown size={14} /> }
 
   return (
-    <ErpLayout title="Campus Connect" subtitle="Anonymous real-time messaging platform">
-      <div className="wa-container">
-        
-        {/* Sidebar: Channel List */}
-        <div className="wa-sidebar">
-          <div className="wa-sidebar-header">
-            <h2>Channels</h2>
-            <MoreVertical size={20} color="#6b7280" style={{ cursor: 'pointer' }} />
-          </div>
+    <ErpLayout title="Campus Wall" subtitle="Anonymous discussions, confessions, and unfiltered campus life. Moderated by Nexus AI.">
+      
+      <div className="campus-wall-header">
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+          <button className="primary-btn compact-btn" onClick={() => setShowModal(true)}>
+            + Create Anonymous Post
+          </button>
           
-          <div style={{ padding: '12px 16px' }}>
-            <div className="input-with-icon" style={{ borderRadius: '99px', padding: '0 12px' }}>
-              <Search size={16} />
-              <input type="text" placeholder="Search channels..." style={{ padding: '10px 0', fontSize: '0.85rem' }} />
+          {merit && (
+            <div className={`merit-badge merit-${merit.status === 'Excellent' ? 'green' : merit.status === 'Warning' ? 'orange' : merit.status === 'Critical' ? 'red' : 'blue'}`}>
+              <Shield size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: '-2px' }} />
+              {merit.tier} Tier ({merit.score} pts)
             </div>
-          </div>
+          )}
+        </div>
 
-          <div className="wa-chat-list">
-            {channels.map(c => (
-              <div 
-                key={c.id} 
-                className={`wa-chat-item ${category === c.id ? 'active' : ''}`}
-                onClick={() => setCategory(c.id)}
+        <div>
+          <div className="category-tabs compact">
+            {categories.map(c => (
+              <button 
+                key={c} 
+                className={`category-tab ${category === c ? 'active' : ''}`}
+                onClick={() => setCategory(c)}
               >
-                <div className="wa-chat-icon">{c.icon}</div>
-                <div className="wa-chat-info">
-                  <div className="wa-chat-name">{c.name}</div>
-                  <div className="wa-chat-preview">{c.desc}</div>
-                </div>
-              </div>
+                {c === "All" ? "All Posts" : `#${c}`}
+              </button>
             ))}
           </div>
         </div>
-
-        {/* Chat Area */}
-        <div className="wa-chat-area">
-          
-          <div className="wa-chat-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div className="wa-chat-icon" style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', color: '#fff' }}>
-                {activeChannel.icon}
-              </div>
-              <div className="wa-chat-header-info">
-                <h3>{activeChannel.name}</h3>
-                <p>Protected by AI Moderation</p>
-              </div>
-            </div>
-            <Search size={20} color="#6b7280" style={{ cursor: 'pointer' }} />
-          </div>
-
-          <div className="wa-messages">
-            {loading ? (
-              <div style={{ textAlign: 'center', color: '#6b7280', marginTop: '20px' }}>Syncing messages...</div>
-            ) : posts.length === 0 ? (
-              <div style={{ textAlign: 'center', color: '#6b7280', marginTop: '20px' }}>No messages yet. Say hi!</div>
-            ) : (
-              posts.map((post, idx) => {
-                // Simulate "incoming" vs "outgoing" randomly for visual variety since it's anonymous
-                // We'll use post.id to deterministically assign outgoing vs incoming
-                const isOutgoing = (post.id % 3) === 0
-                const reacts = post.reactions || {}
-                
-                return (
-                  <div key={post.id} className={`wa-bubble-wrapper ${isOutgoing ? 'outgoing' : 'incoming'}`}>
-                    {post.censored_content && post.censored_content !== post.content && (
-                      <div style={{ fontSize: '0.7rem', color: '#ef4444', marginBottom: '4px', alignSelf: isOutgoing ? 'flex-end' : 'flex-start' }}>
-                        <Shield size={10} style={{ display: 'inline', marginRight: '2px' }} /> Auto-Censored
-                      </div>
-                    )}
-                    
-                    <div className={`wa-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`}>
-                      {post.censored_content || post.content}
-                      <div className="wa-bubble-meta">
-                        <span>Anonymous ID: {post.id.toString().padStart(4, '0')}</span>
-                        <span>{new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Reactions Pill */}
-                    <div className="wa-bubble-reactions">
-                      {['thumbs_up', 'heart', 'laugh'].map(rt => {
-                        const count = (reacts[rt] || []).length
-                        if (count === 0) return null
-                        return (
-                          <div key={rt} className="wa-reaction-pill" onClick={() => handleReact(post.id, rt)}>
-                            {emojis[rt]} {count}
-                          </div>
-                        )
-                      })}
-                      <div className="wa-reaction-pill" onClick={() => handleReact(post.id, 'thumbs_up')} style={{ opacity: 0.5 }}>+</div>
-                    </div>
-                  </div>
-                )
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          <form className="wa-input-area" onSubmit={handleSend}>
-            <input 
-              type="text" 
-              className="wa-input" 
-              placeholder="Type an anonymous message..." 
-              value={newContent}
-              onChange={e => setNewContent(e.target.value)}
-              disabled={loading}
-            />
-            <button type="submit" className="wa-send-btn" disabled={!newContent.trim() || loading}>
-              <Send size={20} />
-            </button>
-          </form>
-
-        </div>
       </div>
+
+      <div className="sort-row">
+        <button className={`sort-btn ${sortBy === 'recent' ? 'active' : ''}`} onClick={() => setSortBy('recent')}>
+          <Clock size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: '-2px' }}/> Recent
+        </button>
+        <button className={`sort-btn ${sortBy === 'trending' ? 'active' : ''}`} onClick={() => setSortBy('trending')}>
+          <Flame size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: '-2px' }}/> Trending
+        </button>
+      </div>
+
+      <div className="anon-feed">
+        {posts.length === 0 ? (
+           <div className="empty-state card">No posts found in this category. Be the first to break the silence!</div>
+        ) : (
+          posts.map(post => {
+            const reacts = post.reactions || {}
+            return (
+              <div key={post.id} className={`anon-post-card ${post.is_flagged ? 'flagged' : ''}`}>
+                <div className="anon-post-header">
+                  <span className="anon-post-category" style={{ background: 'var(--accent)' }}>#{post.category}</span>
+                  <span className="anon-post-time">{new Date(post.created_at).toLocaleString()}</span>
+                </div>
+                
+                {post.censored_content && post.censored_content !== post.content && (
+                  <div className="censored-badge">
+                    <Shield size={10} style={{ display: 'inline', marginRight: '4px', verticalAlign: '-1px' }} />
+                    Auto-Censored by Nexus AI
+                  </div>
+                )}
+                
+                <div className="anon-post-content">
+                  {post.censored_content || post.content}
+                </div>
+                
+                <div className="anon-reactions">
+                  {['thumbs_up', 'heart', 'laugh', 'shock'].map(rt => (
+                    <button key={rt} className="reaction-btn" onClick={() => handleReact(post.id, rt)}>
+                      {emojis[rt]} {(reacts[rt] || []).length}
+                    </button>
+                  ))}
+                  
+                  <button className="reaction-btn flag-btn" onClick={() => handleReact(post.id, 'flag')}>
+                    {emojis['flag']} Flag
+                  </button>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <h3>New Anonymous Post</h3>
+            <p className="modal-subtitle">
+              Your identity is hidden, but your Merit Score is tied to this post. 
+              Violation of guidelines will result in automatic point deductions.
+            </p>
+            
+            <div className="erp-form">
+              <label>
+                Category
+                <select value={newCategory} onChange={e => setNewCategory(e.target.value)}>
+                  {categories.filter(c => c !== "All").map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+              
+              <label>
+                Message
+                <textarea 
+                  rows={4} 
+                  placeholder="What's on your mind? Keep it respectful."
+                  value={newContent}
+                  onChange={e => setNewContent(e.target.value)}
+                />
+              </label>
+            </div>
+            
+            <div className="modal-actions">
+              <button className="outline-btn" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="primary-btn compact-btn" onClick={handlePost}>Post Anonymously</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </ErpLayout>
   )
 }

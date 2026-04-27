@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getToken, saveToken } from "../utils/auth";
+import { getToken } from "../utils/auth";
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
@@ -8,7 +8,6 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// ── Request interceptor — attach Bearer token ───────────────────────────────
 api.interceptors.request.use((config) => {
   const token = getToken();
   if (token) {
@@ -16,77 +15,6 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
-
-// ── Response interceptor — 401 token refresh ────────────────────────────────
-let isRefreshing = false;
-let failedQueue = [];
-
-function processQueue(error, token = null) {
-  failedQueue.forEach(({ resolve, reject }) => {
-    if (error) reject(error);
-    else resolve(token);
-  });
-  failedQueue = [];
-}
-
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (originalRequest.url?.includes("/refresh") || originalRequest.url?.includes("/login")) {
-        return Promise.reject(error);
-      }
-
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return api(originalRequest);
-        });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const refreshToken = localStorage.getItem("erp_refresh_token");
-        if (!refreshToken) throw new Error("No refresh token");
-
-        const { data } = await axios.post(`${API_BASE_URL}/refresh`, {
-          refresh_token: refreshToken,
-        });
-
-        const newToken = data.access_token;
-        saveToken(newToken);
-        if (data.refresh_token) {
-          localStorage.setItem("erp_refresh_token", data.refresh_token);
-        }
-
-        api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
-        processQueue(null, newToken);
-
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        // Trigger logout
-        localStorage.removeItem("erp_token");
-        localStorage.removeItem("erp_role");
-        localStorage.removeItem("erp_user");
-        localStorage.removeItem("erp_refresh_token");
-        window.location.href = "/login";
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 
@@ -499,148 +427,15 @@ export async function fetchPaymentHistory() {
   return response.data;
 }
 
-// ── LIBRARY ─────────────────────────────────────────────────────────────────
-
-export async function fetchBooks(search = "") {
-  const params = search ? { search } : {};
-  const response = await api.get("/library/books", { params });
-  return response.data;
-}
-
-export async function fetchMyIssuedBooks() {
-  const response = await api.get("/library/my-books");
-  return response.data;
-}
-
-// ── PLACEMENT ───────────────────────────────────────────────────────────────
-
-export async function fetchPlacementDrives() {
-  const response = await api.get("/placement/drives");
-  return response.data;
-}
-
-export async function applyToDrive(driveId) {
-  const response = await api.post(`/placement/drives/${driveId}/apply`);
-  return response.data;
-}
-
-export async function fetchMyApplications() {
-  const response = await api.get("/placement/my-applications");
-  return response.data;
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// FACULTY PORTAL APIs
-// ══════════════════════════════════════════════════════════════════════════════
-
-export async function fetchFacultyDashboard() {
-  const response = await api.get("/faculty-portal/dashboard");
-  return response.data;
-}
-
-export async function fetchFacultyTimetable() {
-  const response = await api.get("/faculty-portal/timetable");
-  return response.data;
-}
-
-export async function markAttendance(data) {
-  const response = await api.post("/faculty-portal/attendance/mark", data);
-  return response.data;
-}
-
-export async function fetchAttendanceDefaulters() {
-  const response = await api.get("/faculty-portal/attendance/defaulters");
-  return response.data;
-}
-
-export async function fetchPendingAmendments() {
-  const response = await api.get("/faculty-portal/hod/attendance/pending");
-  return response.data;
-}
-
-export async function approveAmendment(reqId, approve = true, remarks = "") {
-  const response = await api.put(`/faculty-portal/hod/attendance/approve/${reqId}`, null, {
-    params: { approve, remarks },
-  });
-  return response.data;
-}
-
-export async function uploadMarks(data) {
-  const response = await api.post("/faculty-portal/marks/upload", data);
-  return response.data;
-}
-
-export async function publishMarks(subjectId, assessmentType) {
-  const response = await api.post("/faculty-portal/marks/publish", null, {
-    params: { subject_id: subjectId, assessment_type: assessmentType },
-  });
-  return response.data;
-}
-
-export async function fetchMarkStatistics(subjectId) {
-  const response = await api.get(`/faculty-portal/marks/statistics/${subjectId}`);
-  return response.data;
-}
-
-export async function fetchFacultyPendingLeaves() {
-  const response = await api.get("/faculty-portal/leave/pending");
-  return response.data;
-}
-
-export async function approveFacultyLeave(leaveId) {
-  const response = await api.put(`/faculty-portal/leave/${leaveId}/approve`);
-  return response.data;
-}
-
-export async function rejectFacultyLeave(leaveId, reason = "") {
-  const response = await api.put(`/faculty-portal/leave/${leaveId}/reject`, null, {
-    params: { reason },
-  });
-  return response.data;
-}
-
-export async function fetchHodPendingLeaves() {
-  const response = await api.get("/faculty-portal/hod/leave/pending");
-  return response.data;
-}
-
-export async function hodApproveLeave(leaveId) {
-  const response = await api.put(`/faculty-portal/hod/leave/${leaveId}/approve`);
-  return response.data;
-}
-
-export async function createFacultyAnnouncement(data) {
-  const response = await api.post("/faculty-portal/announcements", data);
-  return response.data;
-}
-
-export async function fetchFacultyAssignments() {
-  const response = await api.get("/faculty-portal/assignments");
-  return response.data;
-}
-
-export async function createFacultyAssignment(data) {
-  const response = await api.post("/faculty-portal/assignments", data);
-  return response.data;
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// ADMIN PANEL APIs
-// ══════════════════════════════════════════════════════════════════════════════
+// ── ADMIN PANEL ─────────────────────────────────────────────────────────────
 
 export async function fetchAdminDashboard() {
-  const response = await api.get("/admin/dashboard/v2");
+  const response = await api.get("/admin/dashboard");
   return response.data;
 }
 
-export async function fetchAllStudents(dept = null) {
-  const params = dept ? { dept } : {};
-  const response = await api.get("/admin/students", { params });
-  return response.data;
-}
-
-export async function createStudent(data) {
-  const response = await api.post("/admin/students", data);
+export async function fetchAllStudents() {
+  const response = await api.get("/admin/students");
   return response.data;
 }
 
@@ -659,22 +454,5 @@ export async function updateLeaveStatus(leaveId, status) {
   return response.data;
 }
 
-export async function fetchAttendanceReport() {
-  const response = await api.get("/admin/reports/attendance");
-  return response.data;
-}
-
-export async function fetchFeesReport() {
-  const response = await api.get("/admin/reports/fees");
-  return response.data;
-}
-
-export async function fetchMoodAnalytics(batchYear = null, section = null) {
-  const params = {};
-  if (batchYear) params.batch_year = batchYear;
-  if (section) params.section = section;
-  const response = await api.get("/admin/analytics/mood", { params });
-  return response.data;
-}
-
 export default api;
+

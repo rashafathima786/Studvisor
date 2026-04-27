@@ -37,7 +37,7 @@ export default function LibraryPage() {
   }
 
   if (loading) return (
-    <div className="page-loader"><div className="loader-card"><h2>Studvisor</h2><p>Loading Library...</p></div></div>
+    <div className="page-loader"><div className="loader-card"><h2>Nexus ERP</h2><p>Loading Library...</p></div></div>
   )
 
   return (
@@ -126,4 +126,3 @@ export default function LibraryPage() {
     </ErpLayout>
   )
 }
-

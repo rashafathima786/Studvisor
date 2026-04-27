@@ -5,7 +5,7 @@ import { getToken, getRole, getUser, saveToken, saveRole, saveUser, removeToken 
  * Global auth + user state store using Zustand.
  * Eliminates prop drilling and duplicate API calls across pages.
  */
-const useAuthStore = create((set, get) => ({
+const useAuthStore = create((set) => ({
   // ── State ─────────────────────────────────────────────────────────────
   token: getToken(),
   role: getRole(),
@@ -22,17 +22,16 @@ const useAuthStore = create((set, get) => ({
 
   logout: () => {
     removeToken()
-    localStorage.removeItem('erp_refresh_token')
     set({ token: null, role: null, user: null, isAuthenticated: false })
   },
 
-  // ── Role Checks (using Zustand state, not localStorage) ───────────────
-  isStudent: () => get().role === 'student',
+  // ── Role Checks ───────────────────────────────────────────────────────
+  isStudent: () => getRole() === 'student',
   isFaculty: () => {
-    const r = get().role
+    const r = getRole()
     return r === 'faculty' || r === 'hod'
   },
-  isAdmin: () => get().role === 'admin',
+  isAdmin: () => getRole() === 'admin',
 }))
 
 export default useAuthStore

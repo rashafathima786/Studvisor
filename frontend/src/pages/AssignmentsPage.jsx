@@ -1,107 +1,70 @@
 import { useState, useEffect } from 'react';
 import { fetchAssignments, submitAssignment } from '../services/api';
-import Header from '../components/Header';
-import { BookOpen, CheckCircle, Clock } from 'lucide-react';
+import ErpLayout from '../components/ErpLayout';
+import { CheckCircle, Clock } from 'lucide-react';
 
 export default function AssignmentsPage() {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadAssignments();
-  }, []);
+  useEffect(() => { loadAssignments(); }, []);
 
   const loadAssignments = async () => {
-    try {
-      const data = await fetchAssignments();
-      setAssignments(data?.assignments || []);
-    } catch (err) {
-      console.error("Failed to load assignments", err);
-    } finally {
-      setLoading(false);
-    }
+    try { const data = await fetchAssignments(); setAssignments(data?.assignments || []); }
+    catch (err) { console.error("Failed to load assignments", err); }
+    finally { setLoading(false); }
   };
 
   const handleSubmit = async (assignmentId) => {
-    try {
-      await submitAssignment(assignmentId);
-      await loadAssignments(); // Reload to show updated status
-    } catch (err) {
-      alert("Failed to submit assignment.");
-    }
+    try { await submitAssignment(assignmentId); await loadAssignments(); }
+    catch (err) { alert("Failed to submit assignment."); }
   };
 
   return (
-    <div className="page-container">
-      <Header title="Assignments" subtitle="Track your pending tasks and submissions" />
-
-      <div className="card" style={{ marginTop: '20px' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-          <BookOpen size={24} color="var(--primary-color)" /> My Assignments
-        </h2>
-
-        {loading ? (
-          <p>Loading assignments...</p>
-        ) : assignments.length === 0 ? (
-          <p>You have no assignments right now. Enjoy your free time!</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {assignments.map((assignment) => {
-              const isSubmitted = assignment.status === "Submitted";
-              const isOverdue = new Date(assignment.due_date) < new Date() && !isSubmitted;
-
-              return (
-                <div key={assignment.id} style={{ 
-                  border: `1px solid ${isOverdue ? 'rgba(255, 0, 0, 0.3)' : 'var(--border-color)'}`, 
-                  borderRadius: '12px', 
-                  padding: '20px',
-                  backgroundColor: isSubmitted ? 'var(--bg-secondary)' : 'white' 
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <h3 style={{ fontSize: '1.2rem', margin: '0 0 8px 0', textDecoration: isSubmitted ? 'line-through' : 'none', color: isSubmitted ? 'var(--text-muted)' : 'var(--text-color)' }}>
-                        {assignment.title}
-                      </h3>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '0 0 12px 0' }}>
-                        {assignment.subject}
-                      </p>
-                    </div>
-                    <span className="pill-badge" style={{ 
-                      backgroundColor: isSubmitted ? 'rgba(0, 128, 0, 0.1)' : isOverdue ? 'rgba(255, 0, 0, 0.1)' : 'var(--primary-color)',
-                      color: isSubmitted ? 'green' : isOverdue ? 'red' : 'white'
-                    }}>
-                      {isSubmitted ? 'Submitted' : isOverdue ? 'Overdue' : 'Pending'}
-                    </span>
-                  </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: isOverdue ? 'red' : 'var(--text-muted)', marginBottom: '20px' }}>
-                    <Clock size={16} /> Due: {new Date(assignment.due_date).toLocaleDateString()}
-                  </div>
-
-                  <button 
-                    onClick={() => !isSubmitted && handleSubmit(assignment.id)}
-                    disabled={isSubmitted}
-                    style={{
-                      padding: '10px 20px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      backgroundColor: isSubmitted ? 'transparent' : 'var(--primary-color)',
-                      color: isSubmitted ? 'green' : 'white',
-                      fontWeight: 'bold',
-                      cursor: isSubmitted ? 'default' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    {isSubmitted ? <><CheckCircle size={18} /> Completed</> : 'Submit Now'}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+    <ErpLayout title="ASSESSMENTS">
+      {loading ? <div className="card"><p>Loading assignments...</p></div> : assignments.length === 0 ? (
+        <div className="card"><p>You have no assignments right now. Enjoy your free time!</p></div>
+      ) : (
+        <div className="linways-table-container">
+          <table className="linways-table">
+            <thead>
+              <tr className="linways-table-header-row"><th colSpan="5">MY ASSIGNMENTS</th></tr>
+              <tr>
+                <th style={{ textAlign: 'left' }}>TITLE</th>
+                <th>SUBJECT</th>
+                <th>DUE DATE</th>
+                <th>STATUS</th>
+                <th>ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assignments.map((assignment) => {
+                const isSubmitted = assignment.status === "Submitted";
+                const isOverdue = new Date(assignment.due_date) < new Date() && !isSubmitted;
+                return (
+                  <tr key={assignment.id}>
+                    <td style={{ textAlign: 'left', fontWeight: 500, textDecoration: isSubmitted ? 'line-through' : 'none', color: isSubmitted ? '#888' : '#333' }}>{assignment.title}</td>
+                    <td>{assignment.subject}</td>
+                    <td style={{ color: isOverdue ? '#ef4444' : '#333' }}><Clock size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }} />{new Date(assignment.due_date).toLocaleDateString()}</td>
+                    <td>
+                      <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: isSubmitted ? '#dcfce7' : isOverdue ? '#fee2e2' : '#fef9c3', color: isSubmitted ? '#22c55e' : isOverdue ? '#ef4444' : '#ca8a04' }}>
+                        {isSubmitted ? 'Submitted' : isOverdue ? 'Overdue' : 'Pending'}
+                      </span>
+                    </td>
+                    <td>
+                      {!isSubmitted ? (
+                        <button className="filter-btn" onClick={() => handleSubmit(assignment.id)}>Submit</button>
+                      ) : (
+                        <span style={{ color: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}><CheckCircle size={14} /> Done</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </ErpLayout>
   );
 }

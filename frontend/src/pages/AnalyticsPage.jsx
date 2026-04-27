@@ -33,7 +33,7 @@ export default function AnalyticsPage() {
 
   if (loading) return (
     <div className="page-loader">
-       <div className="loader-card"><h2>Studvisor</h2><p>Loading Deep Analytics...</p></div>
+       <div className="loader-card"><h2>Nexus ERP</h2><p>Loading Deep Analytics...</p></div>
     </div>
   )
 
@@ -202,4 +202,3 @@ export default function AnalyticsPage() {
     </ErpLayout>
   )
 }
-

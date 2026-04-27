@@ -1,112 +1,50 @@
-import { useState, useEffect, useMemo } from 'react'
-import { fetchProfile, fetchBunkAlerts, fetchMeritStatus, fetchMarks } from '../services/api'
+import { Filter } from 'lucide-react'
 import ErpLayout from '../components/ErpLayout'
-import { ChevronRight } from 'lucide-react'
-
-// Modular Dashboard Components
-import StatCards from '../components/dashboard/StatCards'
-import WeeklyTasks from '../components/dashboard/WeeklyTasks'
-import { 
-  ProfileCard, 
-  AttendanceWidget, 
-  BunkBudgetWidget, 
-  MeritWidget, 
-  DangerAlertsWidget, 
-  SubjectBreakdownWidget, 
-  RecentResultsWidget 
-} from '../components/dashboard/DashboardWidgets'
 
 export default function DashboardPage() {
-  const [profile, setProfile] = useState(null)
-  const [marks, setMarks] = useState([])
-  const [bunkData, setBunkData] = useState(null)
-  const [meritData, setMeritData] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    Promise.all([
-      fetchProfile().catch(() => null),
-      fetchBunkAlerts().catch(() => null),
-      fetchMeritStatus().catch(() => null),
-      fetchMarks().catch(() => [])
-    ]).then(([profRes, bunkRes, meritRes, marksRes]) => {
-      setProfile({
-        name: profRes?.name || profRes?.full_name || "Student",
-        student_id: profRes?.student_id || profRes?.username || "0000",
-        department: profRes?.department || "CSE",
-        semester: profRes?.semester || 3,
-        roll_number: profRes?.roll_number || "N/A",
-        merit_points: profRes?.merit_points || 0,
-        merit_tier: profRes?.merit_tier || "Novice"
-      })
-      setBunkData(bunkRes || null)
-      setMeritData(meritRes || null)
-      setMarks(Array.isArray(marksRes) ? marksRes.slice(0, 6) : [])
-      setLoading(false)
-    })
-  }, [])
-
-  const overallAtt = bunkData?.overall_attendance || 0
-  const attColor = overallAtt >= 85 ? '#22c55e' : overallAtt >= 75 ? '#eab308' : '#ef4444'
-
-  const sparkData = useMemo(() => {
-    return [78, 82, 75, 80, 85, 79, 83, 88, 82, 86]
-  }, [])
-
-  const now = new Date()
-  const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 17 ? 'Good afternoon' : 'Good evening'
-
-  if (loading) return (
-    <div className="page-loader">
-      <div className="loader-card">
-        <div className="loader-spinner" />
-        <h2>Studvisor</h2>
-        <p>Preparing your dashboard...</p>
-      </div>
-    </div>
-  )
+  const courses = [
+    { code: "6BCA-ML", title: "MACHINE LEARNING", subtitle: "6BCA-ML - Machine Learning", faculty: "ROSHINI B" },
+    { code: "6BCA-PW", title: "PROJECT WORK", subtitle: "6BCA-PW - Project Work", faculty: "Dr.KAVIPRIYA K" },
+    { code: "6BCA-INT", title: "INTERNSHIP", subtitle: "6BCA-INT - Internship", faculty: "SANTHYA S NAIR" },
+    { code: "6BCA-MAD", title: "MOBILE APPLICATION D...", subtitle: "6BCA-MAD - Mobile Application Development", faculty: "Dr. M.A.JOSEPHINE SATHYA" },
+    { code: "6BCA-MLLAB", title: "MACHINE LEARNING ...", subtitle: "6BCA-MLLAB - Machine Learning Lab", faculty: "ROSHINI B" },
+    { code: "6BCA-PLA", title: "PLACEMENT TRAINING", subtitle: "6BCA-PLA - Placement Training", faculty: "Dr.JUDE ASHMI E" },
+    { code: "6BCA-ECD", title: "CA-V2 VOCATION COURS...", subtitle: "6BCA-ECD - CA-V2 Vocation Course II : Electronic Content ...", faculty: "Dr Sudha V" },
+    { code: "6BCA-ST", title: "CA-E2 ELECTIVE II : B. SOF...", subtitle: "6BCA-ST - CA-E2 Elective II : b. Software Testing", faculty: "Dr.UMARANI C" },
+    { code: "6BCA-MADLAB", title: "MOBILE APPLICATI...", subtitle: "6BCA-MADLAB - Mobile Application Development Lab", faculty: "Dr. M.A.JOSEPHINE SATHYA" },
+    { code: "6BCA-LIB", title: "LIBRARY", subtitle: "6BCA-LIB - Library", faculty: "SHYLAJA C" },
+    { code: "6BCA-SPORTS", title: "SPORTS", subtitle: "6BCA-SPORTS - SPORTS", faculty: "Dr.DEVARAJ N D" },
+    { code: "6BCA-IS", title: "INDUSTRIAL SPECIALIZATI...", subtitle: "6BCA-IS - Industrial Specialization", faculty: "Sanjay" },
+  ]
 
   return (
-    <ErpLayout
-      title={`${greeting}, ${profile.name.split(' ')[0]}`}
-      subtitle={now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-    >
-
-      {/* ── Top Stat Cards Row (Orlando Style) ────────────────────────── */}
-      <StatCards profile={profile} bunkData={bunkData} marks={marks} />
-
-      {/* ── Live Class Banner ───────────────────────────────────────── */}
-      {bunkData?.current_class && (
-        <div className="nx-live-banner" style={{ marginBottom: '24px' }}>
-          <div className="nx-live-dot" />
-          <div className="nx-live-content">
-            <span className="nx-live-tag">LIVE NOW</span>
-            <strong>{bunkData.current_class.subject_name}</strong>
-            <span className="nx-live-meta">{bunkData.current_class.room} · {bunkData.current_class.instructor}</span>
-          </div>
-          <ChevronRight size={18} />
-        </div>
-      )}
-
-      {/* ── Bento Grid Assembly ───────────────────────────────────────── */}
-      <div className="nx-bento">
-        {/* Row 1 */}
-        <ProfileCard profile={profile} marks={marks} />
-        <AttendanceWidget overallAtt={overallAtt} attColor={attColor} sparkData={sparkData} />
-        <BunkBudgetWidget bunkData={bunkData} />
-
-        {/* Row 2 */}
-        <WeeklyTasks />
-        <MeritWidget meritData={meritData} profile={profile} />
-
-        {/* Alerts */}
-        <DangerAlertsWidget bunkData={bunkData} />
-
-        {/* Bottom Row */}
-        <SubjectBreakdownWidget bunkData={bunkData} />
-        <RecentResultsWidget marks={marks} />
-      </div>
+    <ErpLayout>
+      <div className="breadcrumb">HOME</div>
       
+      <div className="tabs-container">
+        <div className="tab active">My Courses</div>
+        <div className="tab">Dashboard / Overview</div>
+      </div>
+
+      <div className="program-info">
+        Program: <strong>BCA - IS</strong>, Batch: <strong>BCA (IS) - 2023-26</strong>, Current Semester: <strong>S6</strong>
+      </div>
+
+      <div className="filter-row">
+        <button className="filter-btn">
+          <Filter size={14} /> Show Filters
+        </button>
+      </div>
+
+      <div className="course-grid">
+        {courses.map(course => (
+          <div className="course-card" key={course.code}>
+            <div className="course-title">{course.code} - {course.title}</div>
+            <div className="course-subtitle">{course.subtitle}</div>
+            <div className="faculty-badge">{course.faculty}</div>
+          </div>
+        ))}
+      </div>
     </ErpLayout>
   )
 }
